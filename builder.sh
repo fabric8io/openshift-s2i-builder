@@ -1,24 +1,16 @@
-echo "Jenkins job URL: " $JENKINS_JOB_URL
+echo "Base URI: " $BASE_URI
+echo "Jenkins job: " $JOB_NAME
+JOB_STATUS_URL=${BASE_URI}/job/${JOB_NAME}/lastBuild/api/json
 
 echo "Triggering build..."
+curl --output /dev/null --silent ${BASE_URI}/job/${JOB_NAME}/buildWithParameters?delay=0sec
+#./jenkins --baseuri=${BASE_URI} --job=${JOB_NAME} start
 
-JOB_STATUS_URL=${JENKINS_JOB_URL}/lastBuild/api/json
-GREP_RETURN_CODE=0
-
-# Start the build
-curl --output /dev/null --silent $JENKINS_JOB_URL/build?delay=0sec
-
-# Poll every 5 seconds until the build is finished
-while [ $GREP_RETURN_CODE -eq 0 ]
-do
-    sleep 5
-    # Grep will return 0 while the build is running:
-    curl --output /dev/null --silent $JOB_STATUS_URL | grep result\":null > /dev/null
-    GREP_RETURN_CODE=$?
-done
+echo "Tail logs..."
+./jenkins --baseuri=${BASE_URI} --job=${JOB_NAME} tail
 
 # Check if the build result was SUCCESS, exit script with error if not
-IS_SUCCESS=$(curl $JOB_STATUS_URL | grep result\":\"SUCCESS)
+IS_SUCCESS=$(curl --silent $JOB_STATUS_URL | grep result\":\"SUCCESS)
 
 if [[ $IS_SUCCESS -eq 0 ]]; then
 	echo "Build failed"
